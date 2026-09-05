@@ -1,0 +1,36 @@
+name: Tourism ML Pipeline
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  validate-train-package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install dependencies
+        run: pip install -r tourism_project/requirements.txt
+      - name: Validate dataset
+        run: python tourism_project/model_building/data_register.py
+      - name: Prepare data
+        run: python tourism_project/model_building/prep.py
+      - name: Train and evaluate model
+        run: python tourism_project/model_building/train.py
+      - name: Upload trained model
+        uses: actions/upload-artifact@v4
+        with:
+          name: tourism-model
+          path: tourism_project/deployment/tourism_model.joblib
+      - name: Commit model to repository
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add tourism_project/deployment/tourism_model.joblib
+          git commit -m "Update trained model [skip ci]" || echo "No model changes"
+          git push
